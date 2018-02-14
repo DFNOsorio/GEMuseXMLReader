@@ -26,6 +26,8 @@ python3 GEMuseXMLReader.py 'filename.XML' [arguments]
 #### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Arguments
 
 - [-csv [CSV]] - Convert the XML to a CSV. Output filename is optional.
+- [-pcsv [PCSV]] - Convert the XML to a CSV (Pandas formated). Output filename is optional.
+- [-ops [OPS]] - Convert the XML to a txt compatible with PLUX's opensignals. Output filename is optional.
 - [-x [EXCEL]] - Convert the XML to a Excel. Output filename is optional.
 - [-np [NUMPY]] - Convert the XML to a Numpy. Output filename is optional.
 - [-json [JSON]] - Convert the XML to a JSON. Output filename is optional.
@@ -42,9 +44,9 @@ GEMuseData = GEMuseXMLReader('filename.XML')
 
 GEMuseData.header ## Header containing the patient, device and acquisition session parameters
 
-GEMuseData.dicionary ## Dictionary containing the data separated by lead
+GEMuseData.dataObject ## Dictionary containing the data separated by lead
 
-GEMuseData.structuredArray ## Panda's data frame containg the acquisition data
+GEMuseData.dataFrame ## Panda's data frame containg the acquisition data
 
 GEMuseData.dataArray ## Numpy matrix containing the acquisition data
 ``` 
@@ -71,6 +73,7 @@ GEMuseData.dataArray ## Numpy matrix containing the acquisition data
         * AcquisitionDate
         * LeadAmplitudeUnitsPerBit
         * LeadAmplitudeUnits
+        * Resolution
         * Filters
             * HighPass
             * LowPass
@@ -80,9 +83,9 @@ GEMuseData.dataArray ## Numpy matrix containing the acquisition data
         * SampleRate
         * LeadsInformation
             * LeadsNames
-            * LeadsNames
+            * LeadsLabels
             * NumberOfSamples
-    
+        * HeaderString
 
 * Could be more than one.
 

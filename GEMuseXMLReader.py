@@ -6,6 +6,9 @@ import pandas as pd
 from time import gmtime, strftime
 import argparse
 import json
+import re
+from functools import reduce
+
 
 __author__ = "Daniel Osório"
 __credits__ = ["Daniel Osório"]
@@ -58,10 +61,11 @@ class GEMuseXMLReader:
         acquisitionDate = self.__patientInfoNode['visit']['order']['testInfo']['acquisitionDateTime']['@V']
         LeadAmplitudeUnitsPerBit = self.__ecgNode['@S']
         LeadAmplitudeUnits = self.__ecgNode['@U']
+        Res = self.__ecgNode['@INV']
         filters = self.__getFilterInfo()
         sampleRate = {'SampleRate': self.__ecgNode['sampleRate']['@V'], 'Units': self.__ecgNode['sampleRate']['@U']}
         leadsInformation = self.__getLeadInfo()
-        return {'AcquisitionDate': acquisitionDate, 'LeadAmplitudeUnitsPerBit': LeadAmplitudeUnitsPerBit, 'LeadAmplitudeUnits': LeadAmplitudeUnits, 'Filters': filters, 'SampleRate': sampleRate, 'LeadsInformation': leadsInformation}
+        return {'Resolution': Res, 'AcquisitionDate': acquisitionDate, 'LeadAmplitudeUnitsPerBit': LeadAmplitudeUnitsPerBit, 'LeadAmplitudeUnits': LeadAmplitudeUnits, 'Filters': filters, 'SampleRate': sampleRate, 'LeadsInformation': leadsInformation}
 
     
     def __getFilterInfo(self):
@@ -94,11 +98,40 @@ class GEMuseXMLReader:
 
 
     def __makeStructuredArray(self):
-        self.dicionary = {}
+        self.dataObject = {}
         for i in range(0, len(self.__ecgNode['ecgWaveform'])):
-            self.dicionary[self.__leadsNames[i]] = self.dataArray[:, i]
-        self.structuredArray = pd.DataFrame(self.dicionary)
+            self.dataObject[self.__leadsNames[i]] = self.dataArray[:, i]
+        self.dataFrame = pd.DataFrame(self.dataObject)
         
+        self.__data_string = self.dataFrame.to_string(header=False)
+        self.__data_string = re.sub(' +',',', self.__data_string)
+        self.__header_string = 'nSeq '
+        self.__header_string += reduce((lambda x, y: x + ' ' + y), self.__leadsNames)
+
+        self.header['AcquisitionInfo']['HeaderString'] = self.__header_string
+
+
+    def __makeOSHeader(self):
+        self.__OSHeader = {'00:00:00:00:00:00': {}}
+        self.__OSHeader['00:00:00:00:00:00']['sensor'] = ['RAW'] * len(self.__ecgNode['ecgWaveform'])
+        self.__OSHeader['00:00:00:00:00:00']['device name'] = self.header['DeviceInfo']['DeviceName']
+        self.__OSHeader['00:00:00:00:00:00']['column'] = self.__header_string.split(' ')
+        self.__OSHeader['00:00:00:00:00:00']['sync interval'] = 0
+        self.__OSHeader['00:00:00:00:00:00']['time'] = (self.header['AcquisitionInfo']['AcquisitionDate'].split('T')[1]+'0').strip()
+        self.__OSHeader['00:00:00:00:00:00']['date'] = (self.header['AcquisitionInfo']['AcquisitionDate'].split('T')[0]).strip()
+        self.__OSHeader['00:00:00:00:00:00']['comments'] = ''
+        self.__OSHeader['00:00:00:00:00:00']['device connection'] = 'BTH00:00:00:00:00:00'
+        self.__OSHeader['00:00:00:00:00:00']['channels'] = list(range(1, 1+len(self.__ecgNode['ecgWaveform'])))
+        self.__OSHeader['00:00:00:00:00:00']['mode'] = 0
+        self.__OSHeader['00:00:00:00:00:00']['digital IO'] = []
+        self.__OSHeader['00:00:00:00:00:00']['firmware version'] = 770
+        self.__OSHeader['00:00:00:00:00:00']['device'] = 'virtual_plux'
+        self.__OSHeader['00:00:00:00:00:00']['position'] = 0
+        self.__OSHeader['00:00:00:00:00:00']['sampling rate'] = int(self.header['AcquisitionInfo']['SampleRate']['SampleRate'])
+        self.__OSHeader['00:00:00:00:00:00']['label'] = self.__leadsNames
+        self.__OSHeader['00:00:00:00:00:00']['resolution'] = [int(self.header['AcquisitionInfo']['Resolution']).bit_length()] * len(self.__ecgNode['ecgWaveform'])
+        self.__OSHeader['00:00:00:00:00:00']['special'] = [{}, {}, {}, {}, {}]
+        return json.dumps(self.__OSHeader)
 
     def saveHeader(self, filename):
         temp = open('./'+ filename + '_header.json', 'w')
@@ -106,10 +139,19 @@ class GEMuseXMLReader:
         temp.close()
 
 
-    def saveToCSV(self, filename=None, header=True):
+    def saveToCSV(self, filename=None):
         if(filename==None):
             filename = 'GEMuseXML'+ strftime("%Y-%m-%d_%H:%M:%S", gmtime())
-        self.structuredArray.to_csv('./'+ filename + '.csv')
+        temp = open('./'+ filename + '.csv', 'w')
+        temp.write('# ' + self.__header_string + '\n')
+        temp.write(self.__data_string)
+        temp.close()
+    
+
+    def saveToPandasCSV(self, filename=None, header=True):
+        if(filename==None):
+            filename = 'GEMuseXML'+ strftime("%Y-%m-%d_%H:%M:%S", gmtime())
+        self.dataFrame.to_csv('./'+ filename + '_pandas.csv')
         if(header):
             self.saveHeader(filename)
 
@@ -117,15 +159,18 @@ class GEMuseXMLReader:
     def saveToJson(self, filename=None, header=True):
         if(filename==None):
             filename = 'GEMuseXML' + strftime("%Y-%m-%d_%H:%M:%S", gmtime())
-        self.structuredArray.to_csv('./' + filename + '.json')
-        if(header):
-            self.saveHeader(filename)
+        tempDic = {'Header': self.header, 'Data': {}}
+        for i in range(0, len(self.__ecgNode['ecgWaveform'])):
+            tempDic['Data'][self.__ecgNode['ecgWaveform'][i]['@lead']] = list(map(int, self.__ecgNode['ecgWaveform'][i]['@V'].split(' ')))
+        temp = open('./'+ filename + '.json', 'w')
+        temp.write(json.dumps(tempDic))
+        temp.close()
 
     
     def saveToExcel(self, filename=None, header=True):
         if(filename==None):
             filename = 'GEMuseXML'+ strftime("%Y-%m-%d_%H:%M:%S", gmtime())
-        self.structuredArray.to_csv('./'+ filename + '.xls')
+        self.dataFrame.to_excel('./'+ filename + '.xls')
         if(header):
             self.saveHeader(filename)
     
@@ -133,10 +178,21 @@ class GEMuseXMLReader:
     def saveNumpyArray(self, filename=None, header=True):
         if(filename==None):
             filename = 'GEMuseXML'+ strftime("%Y-%m-%d_%H:%M:%S", gmtime())
-        self.structuredArray.to_csv('./'+ filename + '.npy')
+        np.save('./'+ filename + '.npy', self.dataArray)
         if(header):
             self.saveHeader(filename)
-            
+
+
+    def saveToOPS(self, filename=None):
+        if(filename==None):
+            filename = 'GEMuseXML'+ strftime("%Y-%m-%d_%H:%M:%S", gmtime())
+        temp = open('./'+ filename + '.txt', 'w')
+        temp.write('# OpenSignals Text File Format\n')
+        temp.write('# ' + self.__makeOSHeader() + '\n')
+        temp.write('# EndOfHeaders\n')
+        temp.write(self.dataFrame.to_string(header=False))
+        temp.close()
+
 
 if __name__ == "__main__":
 
@@ -148,6 +204,10 @@ if __name__ == "__main__":
 
         if(type == 'csv'):
             file.saveToCSV(filename)
+        if(type == 'pcsv'):
+            file.saveToPandasCSV(filename)
+        elif(type == 'ops'):
+            file.saveToOPS(filename)
         elif(type == 'json'):
             file.saveToJson(filename)
         elif(type == 'excel'):
@@ -155,7 +215,9 @@ if __name__ == "__main__":
         elif(type == 'numpy'):
             file.saveNumpyArray(filename)
         elif(type == 'all'):
-            file.saveToCSV(filename, False)
+            file.saveToCSV(filename)
+            file.saveToPandasCSV(filename, False)
+            file.saveToOPS(filename)
             file.saveToJson(filename, False)
             file.saveToExcel(filename, False)
             file.saveNumpyArray(filename)
@@ -164,6 +226,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('file', help="file path")
     parser.add_argument("-csv", help="convert to csv", nargs='?', const=' ')
+    parser.add_argument("-pcsv", help="convert to pandas csv", nargs='?', const=' ')
+    parser.add_argument("-ops", help="convert to opensignals formated txt", nargs='?', const=' ')
     parser.add_argument("-x", '--excel', help="convert to excel", nargs='?', const=' ')
     parser.add_argument("-np", '--numpy', help="convert to numpy", nargs='?', const=' ')
     parser.add_argument("-json", help="convert to json", nargs='?', const=' ')
@@ -174,6 +238,12 @@ if __name__ == "__main__":
 
     if args.csv:
         parseArgParser(file, args.csv, 'csv')
+    
+    if args.pcsv:
+        parseArgParser(file, args.pcsv, 'pcsv')
+
+    if args.ops:
+        parseArgParser(file, args.ops, 'ops')
     
     if args.excel:
         parseArgParser(file, args.excel, 'excel')
