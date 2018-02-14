@@ -5,7 +5,14 @@ import numpy as np
 import pandas as pd
 from time import gmtime, strftime
 import argparse
+import json
 
+__author__ = "Daniel Osório"
+__credits__ = ["Daniel Osório"]
+__version__ = "1.0.0"
+__maintainer__ = "Daniel Osório"
+__email__ = "vdosavh@gmail.com"
+__status__ = "Production"
 
 class GEMuseXMLReader:
     def __init__(self, path):
@@ -93,32 +100,42 @@ class GEMuseXMLReader:
         self.structuredArray = pd.DataFrame(self.dicionary)
         
 
-    def saveToCSV(self, filename=None):
-        if(filename==None):
-            self.structuredArray.to_csv('./GEMuseXML'+ strftime("%Y-%m-%d_%H:%M:%S", gmtime()) + '.csv')
-        else:
-            self.structuredArray.to_csv('./'+ filename + '.csv')
+    def saveHeader(self, filename):
+        temp = open('./'+ filename + '_header.json', 'w')
+        temp.write(json.dumps(self.header))
+        temp.close()
 
 
-    def saveToJson(self, filename=None):
+    def saveToCSV(self, filename=None, header=True):
         if(filename==None):
-            self.structuredArray.to_json('./GEMuseXML'+ strftime("%Y-%m-%d_%H:%M:%S", gmtime()) + '.json')
-        else:
-            self.structuredArray.to_json('./'+ filename + '.json')
+            filename = 'GEMuseXML'+ strftime("%Y-%m-%d_%H:%M:%S", gmtime())
+        self.structuredArray.to_csv('./'+ filename + '.csv')
+        if(header):
+            self.saveHeader(filename)
+
+
+    def saveToJson(self, filename=None, header=True):
+        if(filename==None):
+            filename = 'GEMuseXML' + strftime("%Y-%m-%d_%H:%M:%S", gmtime())
+        self.structuredArray.to_csv('./' + filename + '.json')
+        if(header):
+            self.saveHeader(filename)
 
     
-    def saveToExcel(self, filename=None):
+    def saveToExcel(self, filename=None, header=True):
         if(filename==None):
-            self.structuredArray.to_excel('./GEMuseXML'+ strftime("%Y-%m-%d_%H:%M:%S", gmtime()) + '.xls')
-        else:
-            self.structuredArray.to_excel('./'+ filename + '.xls')
-
+            filename = 'GEMuseXML'+ strftime("%Y-%m-%d_%H:%M:%S", gmtime())
+        self.structuredArray.to_csv('./'+ filename + '.xls')
+        if(header):
+            self.saveHeader(filename)
     
-    def saveNumpyArray(self, filename=None):
+
+    def saveNumpyArray(self, filename=None, header=True):
         if(filename==None):
-            np.save('./GEMuseXML'+ strftime("%Y-%m-%d_%H:%M:%S", gmtime()) + '.npy', self.dataArray)
-        else:
-            np.save('./'+ filename + '.npy', self.dataArray)
+            filename = 'GEMuseXML'+ strftime("%Y-%m-%d_%H:%M:%S", gmtime())
+        self.structuredArray.to_csv('./'+ filename + '.npy')
+        if(header):
+            self.saveHeader(filename)
             
 
 if __name__ == "__main__":
@@ -138,9 +155,9 @@ if __name__ == "__main__":
         elif(type == 'numpy'):
             file.saveNumpyArray(filename)
         elif(type == 'all'):
-            file.saveToCSV(filename)
-            file.saveToJson(filename)
-            file.saveToExcel(filename)
+            file.saveToCSV(filename, False)
+            file.saveToJson(filename, False)
+            file.saveToExcel(filename, False)
             file.saveNumpyArray(filename)
 
 
