@@ -15,7 +15,7 @@
 - as a converter
 - as a python class for accessing the data
 ----
-### &nbsp;&nbsp;&nbsp;&nbsp; Converting
+### &nbsp;&nbsp;&nbsp;&nbsp; Converting XML file
 
 
 &nbsp;&nbsp;&nbsp;&nbsp; The GEMuseXMLReader can be called in the command line to convert the XML into a CSV, JSON, Excel, Numpy object, or all. Paired with the converted file is a JSON with the header information.
