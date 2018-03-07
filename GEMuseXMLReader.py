@@ -10,10 +10,10 @@ import re
 from functools import reduce
 
 
-__author__ = "Daniel Osório"
-__credits__ = ["Daniel Osório"]
+__author__ = "Daniel Osorio"
+__credits__ = ["Daniel Osorio"]
 __version__ = "1.0.0"
-__maintainer__ = "Daniel Osório"
+__maintainer__ = "Daniel Osorio"
 __email__ = "vdosavh@gmail.com"
 __status__ = "Production"
 
@@ -41,9 +41,14 @@ class GEMuseXMLReader:
 
 
     def __patientInfoHeader(self):
-        given_name = self.__patientInfoNode['name']['given']['@V']
-        family_name = self.__patientInfoNode['name']['family']['@V']
-        id = self.__patientInfoNode['identifier']['id']['@V']
+        if(self.__patientInfoNode['unknownID']['@V']!="true"):
+            given_name = self.__patientInfoNode['name']['given']['@V']
+            family_name = self.__patientInfoNode['name']['family']['@V']
+            id = self.__patientInfoNode['identifier']['id']['@V']
+        else:
+            given_name = 'Unknown'
+            family_name = 'Unknown'
+            id = 'Unknown'
         gender = self.__patientInfoNode['gender']['@V']
         race = self.__patientInfoNode['raceCode']['@V']
         pacemaker = self.__patientInfoNode['visit']['order']['testInfo']['hasPacemaker']['@V']
@@ -101,6 +106,7 @@ class GEMuseXMLReader:
         self.dataObject = {}
         for i in range(0, len(self.__ecgNode['ecgWaveform'])):
             self.dataObject[self.__leadsNames[i]] = self.dataArray[:, i]
+        
         self.dataFrame = pd.DataFrame(self.dataObject)
         
         self.__data_string = self.dataFrame.to_string(header=False)
@@ -109,6 +115,9 @@ class GEMuseXMLReader:
         self.__header_string += reduce((lambda x, y: x + ' ' + y), self.__leadsNames)
 
         self.header['AcquisitionInfo']['HeaderString'] = self.__header_string
+
+    def getLead(self, lead):
+        return self.dataFrame[[lead]]
 
 
     def __makeOSHeader(self):
