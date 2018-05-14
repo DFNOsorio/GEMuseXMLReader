@@ -20,8 +20,8 @@ __status__ = "Production"
 class GEMuseXMLReader:
     def __init__(self, path):
         try:
-            with open(path, encoding='utf8') as fd:
-                self.dic = xmltodict.parse(fd.read())
+            with open(path, 'rb') as fd:
+                self.dic = xmltodict.parse(fd.read().decode('utf8'))
             self.__path = path
             self.__patientInfoNode = self.dic['sapphire']['dcarRecord']['patientInfo']
             self.__ecgNode = self.__patientInfoNode['visit']['order']['ecgResting']['params']['ecg']['wav']['ecgWaveformMXG']
