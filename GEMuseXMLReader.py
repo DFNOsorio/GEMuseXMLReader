@@ -41,14 +41,14 @@ class GEMuseXMLReader:
 
 
     def __patientInfoHeader(self):
-        if(self.__patientInfoNode['unknownID']['@V']!="true"):
-            given_name = self.__patientInfoNode['name']['given']['@V']
-            family_name = self.__patientInfoNode['name']['family']['@V']
-            id = self.__patientInfoNode['identifier']['id']['@V']
-        else:
+        if('unknownID' in self.__patientInfoNode.keys()):
             given_name = 'Unknown'
             family_name = 'Unknown'
             id = 'Unknown'
+        else:
+            given_name = self.__patientInfoNode['name']['given']['@V']
+            family_name = self.__patientInfoNode['name']['family']['@V']
+            id = self.__patientInfoNode['identifier']['id']['@V']
         gender = self.__patientInfoNode['gender']['@V']
         race = self.__patientInfoNode['raceCode']['@V']
         pacemaker = self.__patientInfoNode['visit']['order']['testInfo']['hasPacemaker']['@V']
