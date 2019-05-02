@@ -8,6 +8,8 @@ import argparse
 import json
 import re
 from functools import reduce
+import os
+
 
 
 __author__ = "Daniel Osorio"
@@ -31,7 +33,7 @@ class GEMuseXMLReader:
 
         except Exception: 
             print(traceback.print_exc())
-
+# 
     
     def __makeHeaderDic(self):
         patientInfo = self.__patientInfoHeader()
@@ -41,7 +43,7 @@ class GEMuseXMLReader:
 
 
     def __patientInfoHeader(self):
-        if('unknownID' in self.__patientInfoNode.keys()):
+        if('unknownID' in self.__patientInfoNode.keys() or 'name' not in self.__patientInfoNode.keys()):
             given_name = 'Unknown'
             family_name = 'Unknown'
             id = 'Unknown'
@@ -81,7 +83,12 @@ class GEMuseXMLReader:
         algorithms = []
         algorithmsNodes = self.__ecgNode['filters']['algorithm']
         for i in algorithmsNodes:
-            algorithms.append({'Name': i['name']['@V'], 'Purpose': i['purpose']['@V']})
+            if(i == 'name'):
+                algorithms.append({'Name': algorithmsNodes['name']['@V'], 'Purpose': algorithmsNodes['purpose']['@V']})
+                break
+            else:
+                algorithms.append({'Name': i['name']['@V'], 'Purpose': i['purpose']['@V']})
+
         return {'HighPass': highPass, 'LowPass': lowPass, 'Algorithms': algorithms}
 
 
@@ -113,9 +120,7 @@ class GEMuseXMLReader:
         self.__data_string = re.sub(' +',',', self.__data_string)
         self.__header_string = 'nSeq '
         self.__header_string += reduce((lambda x, y: x + ' ' + y), self.__leadsNames)
-
         self.header['AcquisitionInfo']['HeaderString'] = self.__header_string
-
     def getLead(self, lead):
         return self.dataFrame[[lead]]
 
@@ -143,15 +148,15 @@ class GEMuseXMLReader:
         return json.dumps(self.__OSHeader)
 
     def saveHeader(self, filename):
-        temp = open('./'+ filename + '_header.json', 'w')
+        temp = open('.{}{}_header.json'.format(os.sep, filename), 'w')
         temp.write(json.dumps(self.header))
         temp.close()
 
 
     def saveToCSV(self, filename=None):
         if(filename==None):
-            filename = 'GEMuseXML'+ strftime("%Y-%m-%d_%H:%M:%S", gmtime())
-        temp = open('./'+ filename + '.csv', 'w')
+            filename = 'GEMuseXML' + strftime("%Y-%m-%d_%H-%M-%S", gmtime())
+        temp = open('.{}{}.csv'.format(os.sep, filename), 'w')
         temp.write('# ' + self.__header_string + '\n')
         temp.write(self.__data_string)
         temp.close()
@@ -159,43 +164,43 @@ class GEMuseXMLReader:
 
     def saveToPandasCSV(self, filename=None, header=True):
         if(filename==None):
-            filename = 'GEMuseXML'+ strftime("%Y-%m-%d_%H:%M:%S", gmtime())
-        self.dataFrame.to_csv('./'+ filename + '_pandas.csv')
+            filename = 'GEMuseXML' + strftime("%Y-%m-%d_%H-%M-%S", gmtime())
+        self.dataFrame.to_csv('.{}{}_pandas.csv'.format(os.sep, filename))
         if(header):
             self.saveHeader(filename)
 
 
     def saveToJson(self, filename=None, header=True):
         if(filename==None):
-            filename = 'GEMuseXML' + strftime("%Y-%m-%d_%H:%M:%S", gmtime())
+            filename = 'GEMuseXML' + strftime("%Y-%m-%d_%H-%M-%S", gmtime())
         tempDic = {'Header': self.header, 'Data': {}}
         for i in range(0, len(self.__ecgNode['ecgWaveform'])):
             tempDic['Data'][self.__ecgNode['ecgWaveform'][i]['@lead']] = list(map(int, self.__ecgNode['ecgWaveform'][i]['@V'].split(' ')))
-        temp = open('./'+ filename + '.json', 'w')
+        temp = open('.{}{}.json'.format(os.sep, filename), 'w')
         temp.write(json.dumps(tempDic))
         temp.close()
 
     
     def saveToExcel(self, filename=None, header=True):
         if(filename==None):
-            filename = 'GEMuseXML'+ strftime("%Y-%m-%d_%H:%M:%S", gmtime())
-        self.dataFrame.to_excel('./'+ filename + '.xls')
+            filename = 'GEMuseXML' + strftime("%Y-%m-%d_%H-%M-%S", gmtime())
+        self.dataFrame.to_excel('.{}{}.xls'.format(os.sep, filename))
         if(header):
             self.saveHeader(filename)
     
 
     def saveNumpyArray(self, filename=None, header=True):
         if(filename==None):
-            filename = 'GEMuseXML'+ strftime("%Y-%m-%d_%H:%M:%S", gmtime())
-        np.save('./'+ filename + '.npy', self.dataArray)
+            filename = 'GEMuseXML' + strftime("%Y-%m-%d_%H-%M-%S", gmtime())
+        np.save('.{}{}.npy'.format(os.sep, filename), self.dataArray)
         if(header):
             self.saveHeader(filename)
 
 
     def saveToOPS(self, filename=None):
         if(filename==None):
-            filename = 'GEMuseXML'+ strftime("%Y-%m-%d_%H:%M:%S", gmtime())
-        temp = open('./'+ filename + '.txt', 'w')
+            filename = 'GEMuseXML' + strftime("%Y-%m-%d_%H-%M-%S", gmtime())
+        temp = open('.{}{}.txt'.format(os.sep, filename), 'w')
         temp.write('# OpenSignals Text File Format\n')
         temp.write('# ' + self.__makeOSHeader() + '\n')
         temp.write('# EndOfHeaders\n')
